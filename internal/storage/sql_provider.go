@@ -1303,8 +1303,14 @@ func (p *SQLProvider) SaveOAuth2BlacklistedJTI(ctx context.Context, blacklistedJ
 func (p *SQLProvider) LoadOAuth2BlacklistedJTI(ctx context.Context, signature string) (blacklistedJTI *model.OAuth2BlacklistedJTI, err error) {
 	blacklistedJTI = &model.OAuth2BlacklistedJTI{}
 
-	if err = p.db.GetContext(ctx, blacklistedJTI, p.sqlSelectOAuth2BlacklistedJTI, signature); err != nil {
-		return nil, fmt.Errorf("error selecting oauth2 blacklisted JTI with signature '%s': %w", blacklistedJTI.Signature, err)
+	err = p.db.GetContext(ctx, blacklistedJTI, p.sqlSelectOAuth2BlacklistedJTI, signature)
+	if err != nil {
+		// Return sql.ErrNoRows directly if no matching record was found
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		// Wrap other errors with additional context
+		return nil, fmt.Errorf("error selecting oauth2 blacklisted JTI with signature '%s': %w", signature, err)
 	}
 
 	return blacklistedJTI, nil
